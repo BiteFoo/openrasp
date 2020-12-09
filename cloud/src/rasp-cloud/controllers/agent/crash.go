@@ -1,4 +1,4 @@
-//Copyright 2017-2019 Baidu Inc.
+//Copyright 2017-2020 Baidu Inc.
 //
 //Licensed under the Apache License, Version 2.0 (the "License");
 //you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net/mail"
 	"os"
+	"rasp-cloud/models/logs"
 	"strings"
 	"github.com/astaxie/beego"
 	"bytes"
@@ -49,10 +50,10 @@ type crashTemplateParam struct {
 func (o *CrashController) Post() {
 	appId := o.Ctx.Input.Header("X-OpenRASP-AppID")
 	app, err := models.GetAppById(appId)
-	if !app.EmailAlarmConf.Enable {
-		o.ServeWithEmptyData()
-		return
-	}
+	//if !app.EmailAlarmConf.Enable {
+	//	o.ServeWithEmptyData()
+	//	return
+	//}
 	isCrashReportEnable := false
 	if app.AttackTypeAlarmConf != nil {
 		if _, ok := (*app.AttackTypeAlarmConf)["crash"]; !ok {
@@ -79,6 +80,19 @@ func (o *CrashController) Post() {
 		o.ServeError(http.StatusBadRequest, "rasp_id can not be empty")
 	}
 	rasp, err := models.GetRaspById(raspId)
+	// send to es
+	alarm := make(map[string]interface{})
+	alarm["rasp_id"] = raspId
+	alarm["app_id"] = appId
+	alarm["plugin_name"] = ""
+	alarm["plugin_version"] = ""
+	alarm["rasp_home"] = ""
+	alarm["host_type"] = ""
+	alarm["register_ip"] = ""
+	alarm["hostname"] = ""
+	alarm["language_version"] = ""
+	alarm["register_time"] = ""
+	alarm["environ"] = make(map[string]string)
 	if err != nil {
 		hostname := o.GetString("hostname")
 		language := o.GetString("language")
@@ -86,8 +100,23 @@ func (o *CrashController) Post() {
 			HostName: hostname,
 			Language: language,
 		}
+		alarm["hostname"] = hostname
+		alarm["language"] = language
+		alarm["version"] = ""
+	} else {
+		alarm["hostname"] = rasp.HostName
+		alarm["language"] = rasp.Language
+		alarm["version"] = rasp.Version
+		alarm["plugin_name"] = rasp.PluginName
+		alarm["plugin_version"] = rasp.PluginVersion
+		alarm["rasp_home"] = rasp.RaspHome
+		alarm["host_type"] = rasp.HostType
+		alarm["register_ip"] = rasp.RegisterIp
+		alarm["hostname"] = rasp.HostName
+		alarm["language_version"] = rasp.LanguageVersion
+		alarm["register_time"] = rasp.RegisterTime
+		alarm["environ"] = rasp.Environ
 	}
-
 	crashLog, info, err := o.GetFile("crash_log")
 	if err != nil {
 		o.ServeError(http.StatusBadRequest, "parse uploadFile error", err)
@@ -96,20 +125,38 @@ func (o *CrashController) Post() {
 		o.ServeError(http.StatusBadRequest, "must have the crash log parameter")
 	}
 	defer crashLog.Close()
-
 	crashLogContent, err := ioutil.ReadAll(crashLog)
 	if err != nil {
 		o.ServeError(http.StatusBadRequest, "failed to read crash log", err)
 	}
-	err = sendCrashEmailAlarm(crashLogContent, info.Filename, app, rasp)
+
+	// send to es
+	//crashLogContent, err := ioutil.ReadFile("hs_err_pid20067-java.log")
+	//if err != nil {
+	//	o.ServeError(http.StatusBadRequest, "hehe", err)
+	//}
+	alarm["crash_log"] = string(crashLogContent)
+	alarm["@timestamp"] = time.Now().UnixNano() / 1000000
+	alarm["event_time"] = alarm["@timestamp"]
+	sendEmail, err := logs.AddCrashAlarm(alarm)
 	if err != nil {
-		o.ServeError(http.StatusBadRequest, "send email failed", err)
+		o.ServeError(http.StatusBadRequest, "send crash alarm to es failed", err)
+	}
+	if app.EmailAlarmConf.Enable && sendEmail {
+		err = sendCrashEmailAlarm(crashLogContent, info.Filename, app, rasp)
+		if err != nil {
+			o.ServeError(http.StatusBadRequest, "send email failed", err)
+		}
 	}
 	o.ServeWithEmptyData()
 }
 
 func sendCrashEmailAlarm(crashLogContent []byte, fileName string, app *models.App, rasp *models.Rasp) error {
-	var emailConf = app.EmailAlarmConf
+	// 获取app的email配置用户名和密码
+	emailConf, err := models.GetEmailConfByAppId(app.Id)
+	if err != nil {
+		return err
+	}
 	if len(emailConf.RecvAddr) > 0 && emailConf.ServerAddr != "" {
 		var (
 			msg       string

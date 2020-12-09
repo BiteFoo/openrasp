@@ -96,20 +96,25 @@ openrasp.heartbeat_interval=90</pre>
 RUN cd /tmp \
     && tar -xf rasp-java.tar.* \
     && /jdk/bin/java -jar rasp-*/RaspInstall.jar -install /tomcat/ -heartbeat 90 -appid {{ current_app.id }} -appsecret {{ current_app.secret }} -backendurl {{ agent_urls[agent_url_id] }} \
-    && rm -rf rasp-*</pre>
+    && rm -rf rasp-*
+# 对于Alpine Linux容器，需要安装系统依赖
+# RUN apk add --no-cache libcurl libstdc++</pre>
                 <h4>Java SpringBoot 容器示例</h4>
                 <pre>ADD https://packages.baidu.com/app/openrasp/release/{{rasp_version}}/rasp-java.tar.gz /tmp
 RUN cd /tmp \
     && tar -xf rasp-java.tar.* \
     && mv rasp-*/rasp/ /rasp/ \
     && rm -f rasp-java.tar.gz
+# 对于Alpine Linux容器，需要安装系统依赖
+# RUN apk add --no-cache libcurl libstdc++
 
 RUN echo "cloud.enable: true" >> /rasp/conf/openrasp.yml \
     && echo "cloud.backend_url: {{ agent_urls[agent_url_id] }}" >> /rasp/conf/openrasp.yml \
     && echo "cloud.app_id: {{ current_app.id }}" >> /rasp/conf/openrasp.yml \
     && echo "cloud.app_secret: {{ current_app.secret }}" >> /rasp/conf/openrasp.yml
 
-RUN java -javaagent:"/rasp/rasp.jar" -jar /springboot.jar</pre>
+# 对于 JDK9，需要额外增加 --add-opens java.base/jdk.internal.loader=ALL-UNNAMED 参数
+CMD java -javaagent:"/rasp/rasp.jar" -jar /springboot.jar</pre>
 
                 <h4>PHP 容器示例</h4>
                 <pre>ADD https://packages.baidu.com/app/openrasp/release/{{rasp_version}}/rasp-php-linux.tar.bz2 /tmp/
@@ -122,15 +127,16 @@ RUN cd /tmp \
                 <h4>1. 下载 Java Agent 安装包</h4>
                 <pre style="white-space: inherit; ">curl https://packages.baidu.com/app/openrasp/release/{{rasp_version}}/rasp-java.tar.gz -o rasp-java.tar.gz<br>tar -xvf rasp-java.tar.gz<br>cd rasp-*/</pre>
                 <h4>2. 执行 RaspInstall 进行安装</h4>
-                <pre style="white-space: inherit; ">java -jar RaspInstall.jar -install /path/to/tomcat -heartbeat 90 -appid {{ current_app.id }} -appsecret {{ current_app.secret }} -backendurl {{ agent_urls[agent_url_id] }}</pre>
-                <h4>3. 重启 Tomcat/JBoss/SpringBoot 应用服务器</h4>
+                <p>请先替换 /path/to/tomcat 为你的服务器路径，再执行命令安装</p>
+                <pre style="white-space: inherit; ">java -jar RaspInstall.jar -heartbeat 90 -appid {{ current_app.id }} -appsecret {{ current_app.secret }} -backendurl {{ agent_urls[agent_url_id] }} -install <font color="red">/path/to/tomcat</font></pre>
+                <h4>3. 重启 Tomcat/JBoss/WebLogic/SpringBoot 应用服务器</h4>
                 <pre style="white-space: inherit; ">/path/to/tomcat/bin/shutdown.sh<br>/path/to/tomcat/bin/startup.sh</pre>
               </div>
               <div id="php-tab" class="tab-pane fade">
                 <h4>1. 下载 PHP 安装包</h4>
                 <pre style="white-space: inherit; ">curl https://packages.baidu.com/app/openrasp/release/{{rasp_version}}/rasp-php-linux.tar.bz2 -o rasp-php-linux.tar.bz2<br>tar -xvf rasp-php-linux.tar.bz2<br>cd rasp-*/</pre>
                 <h4>2. 执行 install.php 进行安装</h4>
-                <pre style="white-space: inherit; ">php install.php -d /opt/rasp --heartbeat 90 --app-id {{ current_app.id }} --app-secret {{ current_app.secret }} --backend-url {{ agent_urls[agent_url_id] }}</pre>
+                <pre style="white-space: inherit; ">php install.php -d <font color="red">/opt/rasp</font> --heartbeat 90 --app-id {{ current_app.id }} --app-secret {{ current_app.secret }} --backend-url {{ agent_urls[agent_url_id] }}</pre>
                 <h4>3. 重启 PHP-FPM 或者 Apache 服务器</h4>
                 <pre style="white-space: inherit; ">service php-fpm restart</pre>
                 <p>-或者-</p>

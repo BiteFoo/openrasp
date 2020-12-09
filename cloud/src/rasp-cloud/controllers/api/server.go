@@ -1,4 +1,4 @@
-//Copyright 2017-2019 Baidu Inc.
+//Copyright 2017-2020 Baidu Inc.
 //
 //Licensed under the Apache License, Version 2.0 (the "License");
 //you may not use this file except in compliance with the License.
@@ -78,7 +78,7 @@ func (o *ServerController) PutUrl() {
 
 // @router /clear_logs [post]
 func (o *ServerController) ClearLogs() {
-	docTypeList := []string{"attack-alarm", "report-data", "error-alarm", "policy-alarm"}
+	docTypeList := []string{"attack-alarm", "report-data", "error-alarm", "policy-alarm", "crash-alarm"}
 	var param struct {
 		AppId string `json:"app_id"`
 	}

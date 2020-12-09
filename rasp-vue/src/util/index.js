@@ -2,7 +2,7 @@ import axios from 'axios'
 import Cookie from 'js-cookie'
 import router from '@/router'
 
-export var rasp_version = '1.3.2'
+export var rasp_version = '1.3.5'
 
 // 起始 type_id: 1001
 export var audit_types = {
@@ -120,7 +120,7 @@ export var attack_types = {
   xxe: 'XXE 外部实体加载',
   directory: '目录遍历',
   rename: '文件重命名',
-  readFile: '任意文件下载',
+  readFile: '任意文件读取',
   deleteFile: '任意文件删除',
   include: '任意文件包含',
   writeFile: '任意文件写入',
@@ -138,7 +138,8 @@ export var attack_types = {
   webshell_file_put_contents: 'WebShell - 后门上传',
   webshell_ld_preload: 'WebShell - LD_PRELOAD 后门',
   response: 'HTTP 响应采样检测',
-  request: '请求开始'
+  request: '请求开始',
+  link: '文件链接'
 }
 
 export var status_types = {
@@ -218,7 +219,7 @@ export const request = axios.create({
   baseURL:
     process.env.NODE_ENV === 'production'
       ? '/'
-      : 'http://scloud.baidu.com:8080/',
+      : 'http://10.14.117.55:8080/',
   timeout: 8000
 })
 request.interceptors.request.use(

@@ -17,6 +17,7 @@
 package com.baidu.openrasp.request;
 
 import com.baidu.openrasp.config.Config;
+import com.baidu.openrasp.messaging.LogTool;
 import com.baidu.openrasp.tool.Reflection;
 import com.baidu.openrasp.tool.model.ApplicationModel;
 
@@ -141,8 +142,12 @@ public final class HttpServletRequest extends AbstractRequest {
      */
     @Override
     public StringBuffer getRequestURL() {
-        Object ret = Reflection.invokeMethod(request, "getRequestURL", EMPTY_CLASS);
-        return ret != null ? (StringBuffer) ret : null;
+        try {
+            Object ret = Reflection.invokeMethod(request, "getRequestURL", EMPTY_CLASS);
+            return ret != null ? (StringBuffer) ret : null;
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     /**
@@ -310,12 +315,16 @@ public final class HttpServletRequest extends AbstractRequest {
     }
 
     private void mergeMap(Map<String, String[]> src, Map<String, String[]> dst) {
-        for (Map.Entry<String, String[]> entry : src.entrySet()) {
-            if (dst.containsKey(entry.getKey())) {
-                dst.put(entry.getKey(), mergeArray(dst.get(entry.getKey()), entry.getValue()));
-            } else {
-                dst.put(entry.getKey(), entry.getValue());
+        try {
+            for (Map.Entry<String, String[]> entry : src.entrySet()) {
+                if (dst.containsKey(entry.getKey())) {
+                    dst.put(entry.getKey(), mergeArray(dst.get(entry.getKey()), entry.getValue()));
+                } else {
+                    dst.put(entry.getKey(), entry.getValue());
+                }
             }
+        } catch (Throwable t) {
+            LogTool.traceHookWarn("failed to merge parameter: " + t.getMessage(), t);
         }
     }
 

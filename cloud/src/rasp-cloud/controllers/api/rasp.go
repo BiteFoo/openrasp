@@ -1,4 +1,4 @@
-//Copyright 2017-2019 Baidu Inc.
+//Copyright 2017-2020 Baidu Inc.
 //
 //Licensed under the Apache License, Version 2.0 (the "License");
 //you may not use this file except in compliance with the License.
@@ -94,9 +94,48 @@ func (o *RaspController) GeneralCsv() {
 	if appId == "" {
 		o.ServeError(http.StatusBadRequest, "the app_id can not be empty")
 	}
-	_, rasps, err := models.FindRasp(&models.Rasp{AppId: appId}, 0, 0)
+	var rasps []*models.Rasp
+	version := o.GetString("version")
+	online, err := o.GetBool("online")
 	if err != nil {
-		o.ServeError(http.StatusBadRequest, "failed to get rasp", err)
+		o.ServeError(http.StatusBadRequest, "online field err", err)
+	}
+	offline, err := o.GetBool("offline")
+	if err != nil {
+		o.ServeError(http.StatusBadRequest, "offline field err", err)
+	}
+	language_java, err := o.GetBool("language_java")
+	if err != nil {
+		o.ServeError(http.StatusBadRequest, "language_java field err", err)
+	}
+	language_php, err := o.GetBool("language_php")
+	if err != nil {
+		o.ServeError(http.StatusBadRequest, "language_php field err", err)
+	}
+	hostname := o.GetString("hostname")
+	selector := &models.Rasp{AppId: appId}
+	if (!online || !offline) {
+		selector.Online = new(bool)
+		*selector.Online = online
+	}
+	if ((!language_java || !language_php) && (language_java || language_php)) {
+		if language_java {
+			selector.Language = "java"
+		} else {
+			selector.Language  = "php"
+		}
+	}
+	if hostname != "" {
+		selector.HostName = hostname
+	}
+	if version != "" {
+		selector.Version = version
+	}
+	if (online || offline || (!language_java && !language_php)) {
+		_, rasps, err = models.FindRasp(selector, 0, 0)
+		if err != nil {
+			o.ServeError(http.StatusBadRequest, "failed to get rasp", err)
+		}
 	}
 	o.Ctx.Output.Header("Content-Type", "text/plain")
 	o.Ctx.Output.Header("Content-Disposition", "attachment;filename=rasp.csv")

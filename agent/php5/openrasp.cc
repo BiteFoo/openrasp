@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 Baidu Inc.
+ * Copyright 2017-2020 Baidu Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ using openrasp::ConfigHolder;
 
 ZEND_DECLARE_MODULE_GLOBALS(openrasp);
 
-const char *OpenRASPInfo::PHP_OPENRASP_VERSION = "1.3.2";
+const char *OpenRASPInfo::PHP_OPENRASP_VERSION = "1.3.5";
 bool is_initialized = false;
 bool remote_active = false;
 std::string openrasp_status = "Protected";
@@ -233,6 +233,10 @@ PHP_MSHUTDOWN_FUNCTION(openrasp)
 {
     if (is_initialized)
     {
+        sigset_t x;
+        sigemptyset(&x);
+        sigaddset(&x, SIGUSR1);
+        sigprocmask(SIG_BLOCK, &x, nullptr);
         int result;
         if (!remote_active)
         {
@@ -255,6 +259,7 @@ PHP_MSHUTDOWN_FUNCTION(openrasp)
         openrasp::scm.reset();
         remote_active = false;
         is_initialized = false;
+        sigprocmask(SIG_UNBLOCK, &x, nullptr);
     }
     UNREGISTER_INI_ENTRIES();
     ZEND_SHUTDOWN_MODULE_GLOBALS(openrasp, PHP_GSHUTDOWN(openrasp));

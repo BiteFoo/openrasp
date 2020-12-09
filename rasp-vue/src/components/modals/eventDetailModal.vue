@@ -166,6 +166,13 @@
                 </li>
               </ul>
 
+              <div class="h6">
+                RASP 版本
+              </div>
+              <p>
+                {{ data.rasp_version }}
+              </p>
+
               <div v-if="data.server_type">
                 <div class="h6">
                   应用版本
@@ -173,7 +180,7 @@
                 <p style="word-break: break-all; ">
                   {{ data.server_type }}/{{ data.server_version }}
                 </p>
-              </div>            
+              </div>
             </div>
             <div id="contact" :class="{'tab-pane': true, 'fade': true, 'show': tabIndex == 3, 'active': tabIndex == 3}">
               <fix_solutions ref="fix_solutions"></fix_solutions>
@@ -222,9 +229,16 @@ export default {
       this.data = data
 
       // v1.2 之后，删除外面的字符串堆栈，改用 params.stack 数组
-      if (! data.stack_trace && data.attack_params.stack)
+      if (! data.stack_trace)
       {
-        data.stack_trace = data.attack_params.stack.join("\n")
+        if (data.attack_params.stack)
+        {
+          data.stack_trace = data.attack_params.stack.join("\n")
+        }
+        else
+        {
+          data.stack_trace = ''
+        }
       }
 
       this.$refs.attack_params.setData(data)

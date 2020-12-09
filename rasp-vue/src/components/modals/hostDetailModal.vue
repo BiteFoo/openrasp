@@ -47,7 +47,7 @@
               <p style="word-break: break-all; ">
                 {{ data.register_ip }}
               </p>
-              <div v-if="data.environ">
+              <div v-if="data.environ && Object.keys(data.environ).length != 0">
                 <div class="h6">
                   环境变量
                 </div>
@@ -59,17 +59,22 @@
               <div class="h6">
                 服务器版本
               </div>
-              <pre>{{ data.language }}/{{ data.language_version }}</pre>
+              <p>{{ data.language }}/{{ data.language_version }}</p>
 
               <div class="h6">
                 Agent 版本
               </div>
-              <pre>{{ data.version }}</pre>
+              <p>{{ data.version }}</p>
 
               <div class="h6">
                 插件版本
               </div>
-              <pre>{{ data.plugin_version }}</pre>
+              <p>{{ data.plugin_version }}</p>
+
+              <div class="h6">
+                RASP ID
+              </div>
+              <p>{{ data.id }}</p>
             </div>
           </div>
         </div>

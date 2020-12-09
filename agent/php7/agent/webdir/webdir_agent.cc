@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 Baidu Inc.
+ * Copyright 2017-2020 Baidu Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,6 +52,11 @@ void WebDirAgent::run()
 			WebDirAgent::signal_received == SIGTERM)
 		{
 			exit(0);
+		}
+		//skip while config has not been written into shm
+		if (0 == scm->get_config_last_update())
+		{
+			continue;
 		}
 		bool force = false;
 		if (collect_webroot_path())

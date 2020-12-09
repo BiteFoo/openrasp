@@ -1,4 +1,4 @@
-//Copyright 2017-2019 Baidu Inc.
+//Copyright 2017-2020 Baidu Inc.
 //
 //Licensed under the Apache License, Version 2.0 (the "License");
 //you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package models
 
 import (
+	"rasp-cloud/conf"
 	"rasp-cloud/mongo"
 	"rasp-cloud/tools"
 	"gopkg.in/mgo.v2"
@@ -25,6 +26,7 @@ import (
 	"github.com/astaxie/beego/httplib"
 	"strings"
 	"fmt"
+	"github.com/astaxie/beego"
 )
 
 type Rasp struct {
@@ -50,6 +52,7 @@ type Rasp struct {
 	RegisterTime      int64             `json:"register_time" bson:"register_time,omitempty"`
 	Environ           map[string]string `json:"environ" bson:"environ,omitempty"`
 	Description       string            `json:"description" bson:"description,omitempty"`
+	HostNameList      []string          `json:"hostname_list" bson:"hostname_list,omitempty"`
 }
 
 type RecordCount struct {
@@ -59,6 +62,13 @@ type RecordCount struct {
 
 const (
 	raspCollectionName = "rasp"
+	defaultOfflineInterval = 180
+)
+
+var (
+	HasOfflineHosts       map[string]float64
+	OfflineInterval       int64
+	OfflineIntervalString string
 )
 
 func init() {
@@ -84,6 +94,14 @@ func init() {
 		tools.Panic(tools.ErrCodeMongoInitFailed,
 			"failed to create register_time index for rasp collection", err)
 	}
+	// read offline interval
+	OfflineInterval = conf.AppConfig.OffLineInterval
+	// check offline Interval valid
+	if OfflineInterval < 30 || OfflineInterval > 3600 {
+		beego.Warning("OfflineInterval must between 30 and 3600, set OfflineInterval to default value")
+		OfflineInterval = int64(defaultOfflineInterval)
+	}
+	OfflineIntervalString = strconv.FormatInt(OfflineInterval, 10)
 }
 
 func UpsertRaspById(id string, rasp *Rasp) (error) {
@@ -126,10 +144,19 @@ func FindRasp(selector *Rasp, page int, perpage int) (count int, result []*Rasp,
 				},
 			},
 			{
+				"rasp_home": bson.M{
+					"$regex":   realHostname,
+					"$options": "$i",
+				},
+			},
+			{
 				"register_ip": bson.M{
 					"$regex":   realHostname,
 					"$options": "$i",
 				},
+			},
+			{
+				"_id": realHostname,
 			},
 			{
 				"version": bson.M{
@@ -152,13 +179,22 @@ func FindRasp(selector *Rasp, page int, perpage int) (count int, result []*Rasp,
 		}
 		delete(bsonModel, "hostname")
 	}
+	if bsonModel["hostname_list"] != nil {
+		delete(bsonModel, "hostname")
+		realHostnameList := selector.HostNameList
+		bsonModel["hostname"] = bson.M{
+			"$in":   realHostnameList,
+		}
+		delete(bsonModel, "hostname_list")
+	}
+
 	if selector.Online != nil {
 		delete(bsonModel, "online")
 		if *selector.Online {
-			bsonModel["$where"] = "this.last_heartbeat_time+this.heartbeat_interval+180 >= " +
+			bsonModel["$where"] = "this.last_heartbeat_time+this.heartbeat_interval+" + OfflineIntervalString + " >= " +
 				strconv.FormatInt(time.Now().Unix(), 10)
 		} else {
-			bsonModel["$where"] = "this.last_heartbeat_time+this.heartbeat_interval+180 < " +
+			bsonModel["$where"] = "this.last_heartbeat_time+this.heartbeat_interval+" + OfflineIntervalString + " < " +
 				strconv.FormatInt(time.Now().Unix(), 10)
 		}
 	}
@@ -190,32 +226,36 @@ func FindRaspVersion(selector *Rasp) (result []*RecordCount, err error) {
 	if bsonModel["app_id"] != nil {
 		app_id := strings.TrimSpace(fmt.Sprint(bsonModel["app_id"]))
 		version := strings.TrimSpace(fmt.Sprint(bsonModel["version"]))
+		language := strings.TrimSpace(fmt.Sprint(bsonModel["language"]))
 		onlineFlag := bson.M{"$gt": 0}
 		if selector.Online != nil {
 			if *selector.Online {
-				onlineFlag = bson.M{"$gt": time.Now().Unix() - 180}
+				onlineFlag = bson.M{"$gt": time.Now().Unix() - OfflineInterval}
 			} else {
-				onlineFlag = bson.M{"$lt": time.Now().Unix() - 180}
+				onlineFlag = bson.M{"$lt": time.Now().Unix() - OfflineInterval}
 			}
 		}
 		var matchCase bson.M
+		matchCase = bson.M{"$and": []bson.M{
+			{"app_id": app_id},
+			{"onlineTime": onlineFlag},
+		}}
 		if version != "<nil>" {
-			matchCase = bson.M{"$and": []bson.M{
-				{"app_id": app_id},
-				{"version": version},
-				{"onlineTime": onlineFlag},
-			}}
-		} else {
-			matchCase = bson.M{"$and": []bson.M{
-				{"app_id": app_id},
-				{"onlineTime": onlineFlag},
-			}}
+			and := matchCase["$and"].([]bson.M)
+			and = append(and, bson.M{"version": version})
+			matchCase["$and"] = and
+		}
+		if language != "<nil>" {
+			and := matchCase["$and"].([]bson.M)
+			and = append(and, bson.M{"language": language})
+			matchCase["$and"] = and
 		}
 		Operations := []bson.M {
 			{
 				"$project": bson.M {
 					"app_id": 1,
 					"version": 1,
+					"language": 1,
 					"last_heartbeat_time": 1,
 					"heartbeat_interval": 1,
 					"onlineTime": bson.M {
@@ -256,7 +296,7 @@ func GetRaspById(id string) (rasp *Rasp, err error) {
 
 func HandleRasp(rasp *Rasp) {
 	var online bool
-	heartbeatInterval := rasp.HeartbeatInterval + 180
+	heartbeatInterval := rasp.HeartbeatInterval + OfflineInterval
 	if time.Now().Unix()-rasp.LastHeartbeatTime > heartbeatInterval {
 		online = false
 	} else {
@@ -287,7 +327,7 @@ func RemoveRaspByIds(appId string, ids []string) (int, error) {
 	selector := bson.M{
 		"_id":    bson.M{"$in": ids},
 		"app_id": appId,
-		"$where": "this.last_heartbeat_time+this.heartbeat_interval+180 < " +
+		"$where": "this.last_heartbeat_time+this.heartbeat_interval+" + OfflineIntervalString + "< " +
 			strconv.FormatInt(time.Now().Unix(), 10),
 	}
 	info, err := mongo.RemoveAll(raspCollectionName, selector)
@@ -301,10 +341,10 @@ func RemoveRaspBySelector(selector map[string]interface{}, appId string) (int, e
 	offlineWhere := ""
 	if _, ok := selector["expire_time"]; ok {
 		expireTime := strconv.FormatInt(int64(selector["expire_time"].(float64)), 10)
-		offlineWhere = "this.last_heartbeat_time+this.heartbeat_interval+180+" + expireTime + "<" +
+		offlineWhere = "this.last_heartbeat_time+this.heartbeat_interval+" + OfflineIntervalString+ "+" + expireTime + "<" +
 			strconv.FormatInt(time.Now().Unix(), 10)
 	} else {
-		offlineWhere = "this.last_heartbeat_time+this.heartbeat_interval+180 < " +
+		offlineWhere = "this.last_heartbeat_time+this.heartbeat_interval+" + OfflineIntervalString + "< " +
 			strconv.FormatInt(time.Now().Unix(), 10)
 	}
 	param := bson.M{"app_id": appId, "$where": offlineWhere}
@@ -351,4 +391,17 @@ func RegisterCallback(url string, token string, rasp *Rasp) error {
 		return errors.New("the message of response body is not ok: " + resBody.Msg)
 	}
 	return nil
+}
+
+func CleanOfflineHosts() {
+	for appId, interval := range HasOfflineHosts {
+		selector := map[string]interface{}{
+			"expire_time": interval * 24 * 3600,
+		}
+		removedCount, err := RemoveRaspBySelector(selector, appId)
+		if err != nil {
+			beego.Error("clear offline err:", err)
+		}
+		beego.Info("remove rasps for app:", appId, " remove counts:", removedCount)
+	}
 }

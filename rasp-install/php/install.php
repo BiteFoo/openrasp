@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright 2017-2019 Baidu Inc.
+ * Copyright 2017-2020 Baidu Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,11 @@
  * limitations under the License.
  */
 ?>
-OpenRASP Installer for PHP servers - Copyright 2017-2019 Baidu Inc.
+OpenRASP Installer for PHP servers - Copyright 2017-2020 Baidu Inc.
 For more details visit: https://rasp.baidu.com/doc/install/software.html
 
 <?php
 error_reporting(E_ALL);
-$open_basedir = ini_get('open_basedir');
-if (!empty($open_basedir)) {
-	echo "WARNING: open_basedir is configured and might affect the installation process";
-	echo "         current value: $open_basedir\n";
-}
 
 foreach (array('/sys/fs/selinux/enforce', '/selinux/enforce') as $selinux) {
 	if (!file_exists($selinux)) {
@@ -103,9 +98,42 @@ function update_file_if_need($src, $dest, $description = "")
 	}
 }
 
-function  startWith($str, $needle)
+function startWith($str, $needle)
 {
 	return strpos($str, $needle) === 0;
+}
+
+function validateRootDir($root_dir)
+{
+	// 未配置直接返回
+	$open_basedir = ini_get('open_basedir');
+	if (empty($open_basedir)) {
+		return;
+	}
+
+	// 避免因为斜杠匹配失败，暂时不做 realpath 处理
+	$root_dir = rtrim($root_dir, '/');
+	$valid    = false;
+
+	// TODO: 改为真实路径 + 前缀检查
+	$allowed = explode(':', $open_basedir);
+	foreach ($allowed as $dir)
+	{
+		$dir = rtrim($dir, '/');
+		if ($dir == $root_dir)
+		{
+			$valid = true;
+			break;
+		}
+	}
+
+	if (! $valid)
+	{
+		echo "WARNING: open_basedir is configured and might affect the installation process\n";
+		echo "Consider adding $root_dir to your open_basedir config\n";
+		echo "Current value: $open_basedir\n";
+		echo "\n";
+	}
 }
 
 class IniConfig
@@ -496,6 +524,9 @@ if (array_key_exists("h", $options) || array_key_exists("help", $options)) {
 if (array_key_exists("d", $options) && !empty($options["d"])) {
 	// 创建目录
 	if (is_string($options["d"])) {
+		// 检查 open_basedir 配置
+		validateRootDir($options["d"]);
+
 		if (!file_exists($options["d"])) {
 			mkdir($options["d"], 0777, true);
 		}
@@ -537,7 +568,7 @@ $iniConfig->generateRemoteManagementEnable();
 major_tips('Check whether required PHP extensions are installed');
 $dep_exts = array('json', 'PDO');
 if (!check_dep_exts_installed($dep_exts)) {
-	log_tips(ERROR, "OpenRASP depends on the following PHP extension: " . implode(" ", $dep_exts) . " . Make sure they are installed on your system.");
+	log_tips(ERROR, "OpenRASP depends on the following PHP extension: " . implode(" ", $dep_exts) . ". Make sure they are installed on your system.");
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 拷贝动态库 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

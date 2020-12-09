@@ -1,4 +1,4 @@
-//Copyright 2017-2019 Baidu Inc.
+//Copyright 2017-2020 Baidu Inc.
 //
 //Licensed under the Apache License, Version 2.0 (the "License");
 //you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ var (
 		"directory":                  "目录遍历",
 		"rename":                     "文件重命名",
 		"readFile":                   "任意文件下载",
+		"deleteFile":                 "任意文件删除",
 		"include":                    "任意文件包含",
 		"writeFile":                  "任意文件写入",
 		"ssrf":                       "SSRF 服务端请求伪造",
@@ -66,6 +67,7 @@ var (
 		"webshell_file_put_contents": "WebShell - 后门上传",
 		"webshell_ld_preload":        "WebShell - LD_PRELOAD 后门",
 		"response":                   "HTTP 响应采样检测",
+		"link":                       "文件链接",
 	}
 
 	AttackInterceptMap = map[interface{}]string{

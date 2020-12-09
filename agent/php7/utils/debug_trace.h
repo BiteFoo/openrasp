@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 Baidu Inc.
+ * Copyright 2017-2020 Baidu Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,6 @@ class DebugTrace
     void set_file(const std::string &file);
     void set_line(long line);
     std::string to_log_string() const;
-    std::string to_plugin_string() const;
     std::string get_source_code() const;
 };
 

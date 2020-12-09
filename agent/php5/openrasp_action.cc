@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 Baidu Inc.
+ * Copyright 2017-2020 Baidu Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,4 @@
 OpenRASPActionType string_to_action(std::string action_string)
 {
     return (action_string == "block") ? AC_BLOCK : ((action_string == "ignore") ? AC_IGNORE : AC_LOG);
-}
-std::string action_to_string(OpenRASPActionType type)
-{
-    return (AC_BLOCK == type) ? "block" : ((AC_LOG == type) ? "log" : "ignore");
 }

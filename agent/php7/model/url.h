@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 Baidu Inc.
+ * Copyright 2017-2020 Baidu Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ public:
     std::string get_query_string() const;
     std::string get_complete_url() const;
     std::string get_path() const;
+    std::string get_real_host() const;
     int get_port() const;
 };
 } // namespace request

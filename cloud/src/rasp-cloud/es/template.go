@@ -1,4 +1,4 @@
-//Copyright 2017-2019 Baidu Inc.
+//Copyright 2017-2020 Baidu Inc.
 //
 //Licensed under the Apache License, Version 2.0 (the "License");
 //you may not use this file except in compliance with the License.
@@ -78,7 +78,7 @@ var attackAlarmTemplate = `
 						},
 						"url": {
 							"type": "keyword",
-							"ignore_above": 256,
+							"ignore_above": 1024,
 							"normalizer": "lowercase_normalizer"
 						},
 						"event_type": {
@@ -477,6 +477,74 @@ var dependencyDataTemplate = `
 		}
 	`
 
+var crashDataTemplate = `
+		{
+			"template":"openrasp-crash-alarm-*",
+			"aliases" : {
+        		"real-{index}" : {} 
+    		},
+			"settings": {
+				"analysis": {
+					"normalizer": {
+						"lowercase_normalizer": {
+							"type": "custom",
+							"filter": ["lowercase","asciifolding"]
+						}
+					}     
+				}
+			},
+			"mappings": {
+				"crash-alarm": {
+					"_all": {
+						"enabled": false
+					},
+					"properties": {
+						"@timestamp":{
+							"type":"date"
+         				},
+						"app_id": {
+							"type": "keyword",
+							"ignore_above" : 256
+						},
+						"rasp_id": {
+							"type": "keyword",
+							"ignore_above" : 256
+						},
+						"language": {
+							"type": "keyword",
+							"ignore_above" : 64
+						},
+						"relativity": {
+							"type": "boolean"
+						},
+						"event_time": {
+							"type": "date"
+						},
+						"hostname": {
+							"type": "keyword",
+							"ignore_above": 256,
+							"normalizer": "lowercase_normalizer"
+						},
+						"plugin_name": {
+							"type": "keyword",
+							"ignore_above": 256
+						},
+						"register_ip": {
+							"type": "keyword",
+							"ignore_above": 128
+						},
+						"crash_message": {
+							"type": "keyword"
+						},
+						"crash_log": {
+							"type": "binary"
+						}
+					}
+				}
+			}
+		}
+	`
+
 func init() {
 	if *conf.AppConfig.Flag.StartType != conf.StartTypeReset {
 
@@ -486,6 +554,7 @@ func init() {
 			"attack-alarm-template":    attackAlarmTemplate,
 			"policy-alarm-template":    policyAlarmTemplate,
 			"dependency-data-template": dependencyDataTemplate,
+			"crash-alarm-template":     crashDataTemplate,
 		}
 		for name, template := range templates {
 			err := CreateTemplate(name, template)

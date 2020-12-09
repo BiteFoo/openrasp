@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 Baidu Inc.
+ * Copyright 2017-2020 Baidu Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -254,6 +254,13 @@ void pre_splfileobject___construct_READ_WRITE_FILE_SSRF(INTERNAL_FUNCTION_PARAME
     {
         return;
     }
+
+    if (nullptr == mode)
+    {
+        mode = "r";
+        mode_len = 1;
+    }
+
     if (maybe_ssrf_vulnerability(file))
     {
         plugin_ssrf_check(file, "splfileobject::__construct" TSRMLS_CC);

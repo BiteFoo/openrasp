@@ -1,4 +1,4 @@
-//Copyright 2017-2019 Baidu Inc.
+//Copyright 2017-2020 Baidu Inc.
 //
 //Licensed under the Apache License, Version 2.0 (the "License");
 //you may not use this file except in compliance with the License.
@@ -67,6 +67,7 @@ func (o *BaseController) ServeStatusCode(code int, status int, description ...st
 func (o *BaseController) UnmarshalJson(v interface{}) {
 	err := json.Unmarshal(o.Ctx.Input.RequestBody, v)
 	if err != nil {
+		beego.Info("RequestBody:", string(o.Ctx.Input.RequestBody))
 		o.ServeError(http.StatusBadRequest, "Invalid JSON request", err)
 	}
 }
@@ -79,7 +80,7 @@ func (o *BaseController) ValidPage(page int, perpage int) {
 		o.ServeError(http.StatusBadRequest, "perpage must be greater than 0")
 	}
 	if perpage > 100 {
-		o.ServeError(http.StatusBadRequest, "perpage must be less than 100")
+		o.ServeError(http.StatusBadRequest, "perpage must be less than 1000")
 	}
 }
 
