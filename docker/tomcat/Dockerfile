@@ -1,4 +1,4 @@
-FROM tomcat:8.0
+FROM tomcat:8.5.89
 MAINTAINER OpenRASP Developers
 
 ARG version_testcase
